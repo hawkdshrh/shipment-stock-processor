@@ -1,4 +1,4 @@
-# resupply-stock-processor project
+# shipment-stock-processor project
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework, and KafkaStreams.
 
@@ -12,7 +12,7 @@ updated-stock topic.  Each update represents the difference between the current 
 ### Logic
 * The "warehouse", represented by the stock-levels topic, is the master of stock and periodically updates absolute stock levels per SKU.
 * Warehouse personnel pack and ship items based on the (external to this process) reserved-stock and orders topics.
-* As warehouse personnedl enter quantity and sku of items shipped, the topology computes the updated stock level and pubishes it to the updated-stock
+* As warehouse personnel enter quantity and sku of items shipped, the topology computes the updated stock level and pubishes it to the updated-stock
 * topic
 
 ### Assumptions
