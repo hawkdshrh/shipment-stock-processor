@@ -4,7 +4,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 
 import io.quarkus.kafka.client.serialization.JsonbSerde;
-import java.time.Duration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -17,10 +16,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.ForeachAction;
-import org.apache.kafka.streams.kstream.Grouped;
-import org.apache.kafka.streams.kstream.JoinWindows;
 import org.apache.kafka.streams.kstream.Joined;
-import org.apache.kafka.streams.kstream.KGroupedStream;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
@@ -61,27 +57,40 @@ public class StockShipmentTopologyProducer {
                         .map(e -> new KeyValue<>(e.getProduct(), e.getQuantity()))
                         .iterator();
 
-        final KTable<Product, Integer> stockShipped = shipments.flatMap(shipmentToProductQuantitiesMapping).toTable();
-        final KTable newStockLevel = stockShipped.join(stockLevels, new ProductLevelValueJoiner());
-        //final KGroupedStream<Product, Integer> updatedStock = stockLevels.merge(stockShipped).groupByKey(Grouped.with(productSerde, Serdes.Integer()));
+        final KeyValueMapper<String, SupplyUpdate, Iterable<KeyValue<Product, Integer>>> supplyUpdateToProductQuantitiesMapping
+                = (supplyUpdateId, supplyUpdate)
+                -> () -> Stream.of(supplyUpdate.getSupplyUpdateEntries())
+                        .map(e -> new KeyValue<>(e.getProduct(), e.getQuantity()))
+                        .iterator();
 
-        //KTable<Product, Integer> newStockLevel = updatedStock.reduce(Integer::sum);
+        final KStream<Product, Integer> stockShipped = shipments.flatMap(shipmentToProductQuantitiesMapping);
+//        final KStream<Product, Integer> latestStockLevels = stockUpdates.flatMap(supplyUpdateToProductQuantitiesMapping);
+//        final KGroupedStream<Product, Integer> updatedStock = latestStockLevels.merge(stockShipped).groupByKey(Grouped.with(productSerde, Serdes.Integer()));
 
-//        newStockLevel.toStream().foreach(new ForeachAction<Product, Integer>() {
-//            @Override
-//            public void apply(Product key, Integer value) {
-//                SupplyUpdateEntry entry = new SupplyUpdateEntry(key, value);
-//                SupplyUpdate update = new SupplyUpdate();
-//                update.setSupplyCode("SHIPMENT");
-//                update.setUpdateId(null);
-//                update.setSupplyUpdateEntries(new SupplyUpdateEntry[]{entry});
-//
-//                LOGGER.log(Level.INFO, "Emitting update for {0} shares for {1}.", new Object[]{entry.getQuantity(), entry.getProduct().getProductSku()});
-//
-//                emitter.send(update);
-//            }
-//        });
+        final KStream<Product, Integer> newStockLevel = stockShipped.leftJoin(stockLevels,
+                (leftValue, rightValue) -> (leftValue != null && rightValue != null) ? - leftValue + rightValue : null,
+                Joined.with(productSerde, Serdes.Integer(), Serdes.Integer())
+        );
+
+
+        newStockLevel.foreach(new ForeachAction<Product, Integer>() {
+            @Override
+            public void apply(Product key, Integer value) {
+                if (value != null) {
+                    SupplyUpdateEntry entry = new SupplyUpdateEntry(key, value);
+                    SupplyUpdate update = new SupplyUpdate();
+                    update.setSupplyCode("SHIPMENT");
+                    update.setUpdateId(null);
+                    update.setSupplyUpdateEntries(new SupplyUpdateEntry[]{entry});
+
+                    LOGGER.log(Level.INFO, "Emitting update for {0} shares for {1}.", new Object[]{entry.getQuantity(), entry.getProduct().getProductSku()});
+
+                    emitter.send(update);
+                }
+            }
+        });
 
         return builder.build();
     }
+
 }
