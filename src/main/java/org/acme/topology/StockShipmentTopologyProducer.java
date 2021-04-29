@@ -64,8 +64,6 @@ public class StockShipmentTopologyProducer {
                         .iterator();
 
         final KStream<Product, Integer> stockShipped = shipments.flatMap(shipmentToProductQuantitiesMapping);
-//        final KStream<Product, Integer> latestStockLevels = stockUpdates.flatMap(supplyUpdateToProductQuantitiesMapping);
-//        final KGroupedStream<Product, Integer> updatedStock = latestStockLevels.merge(stockShipped).groupByKey(Grouped.with(productSerde, Serdes.Integer()));
 
         final KStream<Product, Integer> newStockLevel = stockShipped.leftJoin(stockLevels,
                 (leftValue, rightValue) -> (leftValue != null && rightValue != null) ? - leftValue + rightValue : null,
