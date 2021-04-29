@@ -6,18 +6,19 @@ If you want to learn more about Quarkus, please visit its website: https://quark
 
 ## Application
 
-This app runs a KafkaStreams topology which consumes orders and shipments (from topics of the same name) and produces a stream of stock reservations per product SKU.
+This app runs a KafkaStreams topology which consumes stock-levels and shipments (from topics of the same name) and produces a stream of updates to the 
+updated-stock topic.  Each update represents the difference between the current stock-level and the quantity shipped.
 
 ### Logic
 * The "warehouse", represented by the stock-levels topic, is the master of stock and periodically updates absolute stock levels per SKU.
-* New customer orders and shipments create and release reservations on existing stock for each product SKU and quantity ordered.
+* Warehouse personnel pack and ship items based on the (external to this process) reserved-stock and orders topics.
+* As warehouse personnedl enter quantity and sku of items shipped, the topology computes the updated stock level and pubishes it to the updated-stock
+* topic
 
 ### Assumptions
 * Updates to stock-levels per SKU always supersede previous updates. (Lots of things can happen in the warehouse to change stock-levels.)
-* updated-stock per SKU, resulting from supply orders, will be used to modify in real time the latest stock-levels. 
+* updated-stock per SKU, resulting from shipments, will be used to modify in real time the latest stock-levels. 
  
-(The reserved-stock-processor project: https://github.com/merlante/reserved-stock-processor does this last bit, producing a real time stream of stock reservations.)
-
 ## Quickstart
 
 ### Requirements
