@@ -7,8 +7,8 @@ import org.acme.beans.Product;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import org.acme.beans.Shipment;
-import org.acme.beans.ShipmentLineEntry;
+import org.acme.beans.Order;
+import org.acme.beans.OrderEntry;
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
 
@@ -19,16 +19,16 @@ public class StockShipmentService {
 
     @Inject
     @Channel("shipments-out")
-    Emitter<Shipment> emitter;
+    Emitter<Order> emitter;
 
-    public void shipStock(String orderId, Product product, Integer amount) {
+    public void shipStock(String orderCode, Product product, Integer amount) {
 
-        if (orderId == null || orderId.isEmpty()) {
-            orderId = UUID.randomUUID().toString();
+        if (orderCode == null || orderCode.isEmpty()) {
+            orderCode = "FULFILLMENT";
         }
         LOGGER.log(Level.INFO, "Updating sku:{0} for {1} items.", new Object[]{product.getProductSku(), amount});
-        ShipmentLineEntry entry = new ShipmentLineEntry(product, amount);
-        Shipment shipment = new Shipment(orderId, new ShipmentLineEntry[]{entry});
+        OrderEntry entry = new OrderEntry(product, amount);
+        Order shipment = new Order(orderCode, new OrderEntry[]{entry});
         emitter.send(shipment);
     }
 }

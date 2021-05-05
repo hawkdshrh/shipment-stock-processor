@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import org.acme.beans.Product;
-import org.acme.beans.Shipment;
+import org.acme.beans.Order;
 import org.acme.beans.SupplyUpdate;
 import org.acme.beans.SupplyUpdateEntry;
 import org.apache.kafka.common.serialization.Serdes;
@@ -30,7 +30,7 @@ public class StockShipmentTopologyProducer {
     public static final String UPDATED_STOCK_TOPIC = "updated-stock";
     public static final String STOCK_LEVELS_TOPIC = "stock-levels";
 
-    private final JsonbSerde<Shipment> shipmentSerde = new JsonbSerde<>(Shipment.class);
+    private final JsonbSerde<Order> shipmentSerde = new JsonbSerde<>(Order.class);
     private final JsonbSerde<Product> productSerde = new JsonbSerde<>(Product.class);
     private final JsonbSerde<SupplyUpdate> supplyUpdateSerde = new JsonbSerde<>(SupplyUpdate.class);
 
@@ -44,16 +44,16 @@ public class StockShipmentTopologyProducer {
     public Topology buildTopology() {
         final StreamsBuilder builder = new StreamsBuilder();
 
-        final KStream<String, Shipment> shipments = builder.stream(
+        final KStream<String, Order> shipments = builder.stream(
                 SHIPMENTS_TOPIC,
                 Consumed.with(Serdes.String(), shipmentSerde));
         final KTable<Product, Integer> stockLevels = builder.table(
                 STOCK_LEVELS_TOPIC,
                 Consumed.with(productSerde, Serdes.Integer()));
 
-        final KeyValueMapper<String, Shipment, Iterable<KeyValue<Product, Integer>>> shipmentToProductQuantitiesMapping
+        final KeyValueMapper<String, Order, Iterable<KeyValue<Product, Integer>>> shipmentToProductQuantitiesMapping
                 = (orderId, shipment)
-                -> () -> Stream.of(shipment.getShipmentLineEntries())
+                -> () -> Stream.of(shipment.getOrderEntries())
                         .map(e -> new KeyValue<>(e.getProduct(), e.getQuantity()))
                         .iterator();
 
