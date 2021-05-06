@@ -77,7 +77,7 @@ public class ShipmentResource {
         for (ShipmentLineEntry entry : shipment.getShipmentLineEntries()) {
             LOGGER.log(Level.INFO, "Updating sku:{0} for {1} items.", new Object[]{entry.getProduct().getProductSku(), entry.getQuantity()});
             try {
-                stockShipmentService.shipStock(shipment.getOrderId(), entry.getProduct(), entry.getQuantity());
+                stockShipmentService.shipStock(shipment.getOrderCode(), entry.getProduct(), entry.getQuantity());
             } catch (Throwable t) {
                 System.err.println(t.getLocalizedMessage());
                 return false;
