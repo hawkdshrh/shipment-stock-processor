@@ -4,14 +4,13 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 
 import io.quarkus.kafka.client.serialization.JsonbSerde;
+import io.smallrye.reactive.messaging.kafka.KafkaRecord;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import org.acme.beans.Product;
 import org.acme.beans.Order;
-import org.acme.beans.SupplyUpdate;
-import org.acme.beans.SupplyUpdateEntry;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.Consumed;
@@ -32,13 +31,12 @@ public class StockShipmentTopologyProducer {
 
     private final JsonbSerde<Order> shipmentSerde = new JsonbSerde<>(Order.class);
     private final JsonbSerde<Product> productSerde = new JsonbSerde<>(Product.class);
-    private final JsonbSerde<SupplyUpdate> supplyUpdateSerde = new JsonbSerde<>(SupplyUpdate.class);
 
     private static final Logger LOGGER = Logger.getLogger("StockShipmentTopologyProducer");
 
     @Inject
-    @Channel("updated-stock-out")
-    Emitter<SupplyUpdate> emitter;
+    @Channel("stock-levels-out")
+    Emitter<Integer> emitter;
 
     @Produces
     public Topology buildTopology() {
@@ -57,32 +55,20 @@ public class StockShipmentTopologyProducer {
                         .map(e -> new KeyValue<>(e.getProduct(), e.getQuantity()))
                         .iterator();
 
-        final KeyValueMapper<String, SupplyUpdate, Iterable<KeyValue<Product, Integer>>> supplyUpdateToProductQuantitiesMapping
-                = (supplyUpdateId, supplyUpdate)
-                -> () -> Stream.of(supplyUpdate.getSupplyUpdateEntries())
-                        .map(e -> new KeyValue<>(e.getProduct(), e.getQuantity()))
-                        .iterator();
-
         final KStream<Product, Integer> stockShipped = shipments.flatMap(shipmentToProductQuantitiesMapping);
 
         final KStream<Product, Integer> newStockLevel = stockShipped.leftJoin(stockLevels,
-                (leftValue, rightValue) -> (leftValue != null && rightValue != null) ? - leftValue + rightValue : null,
+                (leftValue, rightValue) -> (leftValue != null && rightValue != null) ? -leftValue + rightValue : null,
                 Joined.with(productSerde, Serdes.Integer(), Serdes.Integer())
         );
-
 
         newStockLevel.foreach(new ForeachAction<Product, Integer>() {
             @Override
             public void apply(Product key, Integer value) {
                 if (value != null) {
-                    SupplyUpdateEntry entry = new SupplyUpdateEntry(key, value);
-                    SupplyUpdate update = new SupplyUpdate();
-                    update.setSupplyCode("SHIPMENT");
-                    update.setUpdateId(null);
-                    update.setSupplyUpdateEntries(new SupplyUpdateEntry[]{entry});
 
-                    LOGGER.log(Level.INFO, "Emitting update for {0} shares for {1}.", new Object[]{entry.getQuantity(), entry.getProduct().getProductSku()});
-
+                    LOGGER.log(Level.INFO, "Emitting update for {0} shares for {1}.", new Object[]{value, key.getProductSku()});
+                    KafkaRecord<Product, Integer> update = KafkaRecord.of(key, value);
                     emitter.send(update);
                 }
             }
