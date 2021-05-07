@@ -26,7 +26,6 @@ import org.eclipse.microprofile.reactive.messaging.Emitter;
 public class StockShipmentTopologyProducer {
 
     public static final String SHIPMENTS_TOPIC = "shipments";
-    public static final String UPDATED_STOCK_TOPIC = "updated-stock";
     public static final String STOCK_LEVELS_TOPIC = "stock-levels";
 
     private final JsonbSerde<Order> shipmentSerde = new JsonbSerde<>(Order.class);
