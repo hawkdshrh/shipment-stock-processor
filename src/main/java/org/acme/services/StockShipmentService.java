@@ -23,9 +23,6 @@ public class StockShipmentService {
 
     public void shipStock(String orderCode, Product product, Integer amount) {
 
-        if (orderCode == null || orderCode.isEmpty()) {
-            orderCode = "FULFILLMENT";
-        }
         LOGGER.log(Level.INFO, "Updating sku:{0} for {1} items.", new Object[]{product.getProductSku(), amount});
         OrderEntry entry = new OrderEntry(product, amount);
         Order shipment = new Order(orderCode, new OrderEntry[]{entry});

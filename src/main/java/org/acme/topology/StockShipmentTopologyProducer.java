@@ -55,6 +55,16 @@ public class StockShipmentTopologyProducer {
                         .iterator();
 
         final KStream<Product, Integer> stockShipped = shipments.flatMap(shipmentToProductQuantitiesMapping);
+        
+        stockShipped.foreach(new ForeachAction<Product, Integer>() {
+            @Override
+            public void apply(Product key, Integer value) {
+                if (value != null) {
+
+                    LOGGER.log(Level.INFO, "Shipment received for {0} shares for {1}.", new Object[]{value, key.getProductSku()});
+                }
+            }
+        });
 
         final KStream<Product, Integer> newStockLevel = stockShipped.leftJoin(stockLevels,
                 (leftValue, rightValue) -> (leftValue != null && rightValue != null) ? -leftValue + rightValue : null,
