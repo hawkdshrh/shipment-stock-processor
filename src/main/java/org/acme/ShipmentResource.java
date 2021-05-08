@@ -40,8 +40,8 @@ public class ShipmentResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("{sku}/{orderId}")
-    public Boolean shipQuantity(@PathParam("sku") String sku, @PathParam("orderId") String orderId, OrderEntry entry) {
+    @Path("{sku}/{orderCode}")
+    public Boolean shipQuantity(@PathParam("sku") String sku, @PathParam("orderCode") String orderCode, OrderEntry entry) {
 
         /**
          * Example Payload:
@@ -49,7 +49,7 @@ public class ShipmentResource {
          */
         LOGGER.log(Level.INFO, "Updating sku:{0} for {1} items.", new Object[]{entry.getProduct().getProductSku(), entry.getQuantity()});
         try {
-            stockShipmentService.shipStock(orderId, entry.getProduct(), entry.getQuantity());
+            stockShipmentService.shipStock(orderCode, entry.getProduct(), entry.getQuantity());
         } catch (Throwable t) {
             System.err.println(t.getLocalizedMessage());
             return false;
